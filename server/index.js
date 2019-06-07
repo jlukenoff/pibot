@@ -16,20 +16,38 @@ const app = express();
 
 app.use(express.static(path.resolve(__dirname, '../public')));
 
-app.get('/', (req, res) => {
-  res.end('request received');
-});
-
 const port = process.env.PORT || 3000;
 
 io.on('connection', client => {
   client.on('key', direction => {
     console.log('direction received', direction);
     client.emit('keySuccess', direction);
+    if (direction === 'DOWN') {
+      motorRight.servoWrite(2000);
+      motorLeft.servoWrite(600);
+      return setTimeout(() => {
+        motorRight.servoWrite(0);
+        motorLeft.servoWrite(0);
+      }, 500);
+    }
     if (direction === 'UP') {
-      setTimeout(() => {
-        motorRight.servoWrite(2000);
-        motorLeft.servoWrite(600);
+      motorRight.servoWrite(600);
+      motorLeft.servoWrite(2000);
+      return setTimeout(() => {
+        motorRight.servoWrite(0);
+        motorLeft.servoWrite(0);
+      }, 500);
+    }
+    if (direction === 'LEFT') {
+      motorRight.servoWrite(2000);
+      return setTimeout(() => {
+        motorRight.servoWrite(0);
+      }, 500);
+    }
+    if (direction === 'RIGHT') {
+      motorLeft.servoWrite(2000);
+      return setTimeout(() => {
+        motorLeft.servoWrite(0);
       }, 500);
     }
   });

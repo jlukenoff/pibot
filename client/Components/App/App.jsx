@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import openSocket from 'socket.io-client';
 import { Container, InputField } from '../Styles/Styles';
 
-const socket = openSocket('http://localhost:3001');
+const socket = openSocket('http://10.0.0.180:3001');
 
 class App extends Component {
   constructor(props) {
@@ -13,7 +13,7 @@ class App extends Component {
     };
 
     socket.on('keySuccess', direction => {
-      console.log('direction:', direction);
+      console.log('direction at keySuccess:', direction);
       this.setState({ direction });
     });
 
