@@ -2,6 +2,13 @@ const express = require('express');
 const path = require('path');
 const Gpio = require('pigpio').Gpio;
 const io = require('socket.io')();
+const { spawn } = require('child_process');
+
+const camServer = spawn('python3 picam_server.py', {
+  cwd: __dirname,
+  shell: true,
+  stdio: 'inherit',
+})
 
 let motorRight = null;
 let motorLeft = null;
@@ -19,38 +26,29 @@ app.use(express.static(path.resolve(__dirname, '../public')));
 const port = process.env.PORT || 3000;
 
 io.on('connection', client => {
-  client.on('key', direction => {
-    console.log('direction received', direction);
-    client.emit('keySuccess', direction);
-    if (direction === 'DOWN') {
-      motorRight.servoWrite(2000);
-      motorLeft.servoWrite(600);
-      return setTimeout(() => {
-        motorRight.servoWrite(0);
-        motorLeft.servoWrite(0);
-      }, 500);
-    }
+  client.on('keyDown', direction => {
     if (direction === 'UP') {
-      motorRight.servoWrite(600);
-      motorLeft.servoWrite(2000);
-      return setTimeout(() => {
-        motorRight.servoWrite(0);
-        motorLeft.servoWrite(0);
-      }, 500);
+      motorLeft.servoWrite(2500);
+      motorRight.servoWrite(500);
+    }
+    if (direction === 'DOWN') {
+      motorLeft.servoWrite(1000);
+      motorRight.servoWrite(2000);
     }
     if (direction === 'LEFT') {
-      motorRight.servoWrite(2000);
-      return setTimeout(() => {
-        motorRight.servoWrite(0);
-      }, 500);
+      motorRight.servoWrite(1000);
+      motorLeft.servoWrite(1000);
     }
     if (direction === 'RIGHT') {
       motorLeft.servoWrite(2000);
-      return setTimeout(() => {
-        motorLeft.servoWrite(0);
-      }, 500);
+      motorRight.servoWrite(2000);
     }
   });
+
+  client.on('keyUp', (direction) => {
+    motorLeft.servoWrite(0);
+    motorRight.servoWrite(0);
+  })
 });
 
 const server = app.listen(port, () => {

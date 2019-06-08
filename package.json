@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "test": "jest",
-    "dev:start": "nodemon --inspect server/index.js",
+    "dev:start": "nodemon server/index.js",
     "dev:build": "webpack -w",
     "build": "webpack -p",
     "docker-compose": "docker run -d -p 8080:3000 -v $(pwd):/src/app --name mern-boilerplate jlukenoff/mern-boilerplate",

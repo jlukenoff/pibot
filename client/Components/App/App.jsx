@@ -17,11 +17,28 @@ class App extends Component {
       this.setState({ direction });
     });
 
-    this.handleKeyDown = this.handleKeyDown.bind(this);
+    // this.handleKeyDown = this.handleKeyDown.bind(this);
+    // this.handleKeyDown = this.handleKeyDown.bind(this);
   }
 
   handleKeyDown(e) {
-    let direction;
+    let direction = '';
+    if (e.which === 37) {
+      direction = 'LEFT';
+    } else if (e.which === 38) {
+      direction = 'UP';
+    } else if (e.which === 39) {
+      direction = 'RIGHT';
+    } else if (e.which === 40) {
+      direction = 'DOWN';
+    } else {
+      return;
+    }
+    return socket.emit('keyDown', direction);
+  }
+
+  handleKeyUp(e) {
+    let direction = '';
     if (e.which === 37) {
       direction = 'LEFT';
     } else if (e.which === 38) {
@@ -31,8 +48,7 @@ class App extends Component {
     } else if (e.which === 40) {
       direction = 'DOWN';
     }
-    console.log('direction:', direction);
-    socket.emit('key', direction);
+    return socket.emit('keyUp', direction);
   }
 
   render() {
@@ -40,9 +56,10 @@ class App extends Component {
       state: { direction },
     } = this;
     return (
-      <Container onKeyDown={this.handleKeyDown}>
-        Last key pressed {direction}
-        <InputField type="text" />
+      <Container onKeyDown={this.handleKeyDown} onKeyUp={this.handleKeyUp}>
+        <img src="http://10.0.0.180:8000/stream.mjpg" width="640" height="480" />
+        <InputField type="text" autoFocus/>
+
       </Container>
     );
   }
