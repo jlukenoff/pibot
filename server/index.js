@@ -3,7 +3,6 @@ const express = require('express');
 const path = require('path');
 const parser = require('body-parser');
 const passport = require('passport');
-const { Strategy: LocalStrategy } = require('passport-local');
 const session = require('express-session');
 const btoa = require('btoa');
 const { Users } = require('./database');
@@ -43,9 +42,83 @@ app.use(parser.json());
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(express.static(path.resolve(__dirname, '../public')));
+// app.use('/auth', require('./auth'));
+// Configure Passport
+passport.use(
+  new LocalStrategy((username, password, done) => {
+    User.findOne({ username }, (err, user) => {
+      if (err) return done(err);
+      if (!user) return done(null, false, { message: 'incorrect username' });
+      return user.comparePassword(password, (e, isMatch) => {
+        if (e) return done(e);
+        if (!isMatch) {
+          return done(null, false, { message: 'incorrect password' });
+        }
+        return done(null, user);
+      });
+    });
+  })
+);
 
-const port = process.env.PORT || 3000;
+passport.serializeUser((user, done) => {
+  done(null, user._id);
+});
+
+passport.deserializeUser((id, done) => {
+  Users.findOne({ _id: id }, (err, user) => done(err, user));
+});
+
+const validateAuth = (req, res, next) => {
+  // api routes - check basic auth
+  if (req.url.match(/add-user/)) {
+    const { AUTH_STRING } = process.env;
+    const { authorization: authString } = req.headers;
+
+    if (authString === `Basic ${btoa(AUTH_STRING)}`) {
+      return next();
+    }
+    return res.status(401).send('Unauthorized');
+  }
+
+  // validate sessions
+  if (req.user) {
+    if (req.url.match(/\/auth/)) {
+      return res.redirect('/');
+    }
+
+    return next();
+  }
+
+  // allow non-session traffic to access login
+  if (req.url.match(/\/auth/)) {
+    console.log('directing to login page');
+    return next();
+  }
+
+  // otherwise redirect user to login page
+  return res.redirect('/auth');
+};
+
+router.put('/', passport.authenticate('local'), (req, res) => {
+  res.redirect('/');
+});
+
+router.get('/login', validateAuth, (req, res) => {
+  const loginHtmlPath = path.resolve(__dirname, '../public/login.html');
+  return res.sendFile(loginHtmlPath);
+});
+
+router.post('/', parser.json(), validateAuth, (req, res) => {
+  const { username, password } = req.body;
+  const newUser = new Users({ username, password });
+
+  newUser.save();
+
+  res.send('success');
+});
+
+
+app.use(express.static(path.resolve(__dirname, '../public')));
 
 io.on('connection', client => {
   client.on('keyDown', direction => {
@@ -73,11 +146,14 @@ io.on('connection', client => {
   })
 });
 
-const server = app.listen(port, () => {
-  io.listen(port + 1);
-  console.log(`Server running on port ${port}`);
-});
+const port = process.env.PORT || 3000;
+const ioPort = process.env.IO_PORT || port + 1;
 
-if (process.env.NODE_ENV === 'test') server.close();
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    io.listen(port + 1);
+    console.log(`Server running on port ${port}`);
+  });
+}
 
-module.exports = { server };
+module.exports = { server: app };

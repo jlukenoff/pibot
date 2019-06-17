@@ -1,45 +1,55 @@
-const mongoose = require('mongoose');
+const sqlite = require('sqlite');
 const bcrypt = require('bcrypt');
+const SQL = require('sql-template-strings');
 
 const { env: { MONGO_PORT }} = process;
 
 const SALT_WORK_FACTOR = 10;
 
-mongoose.connect(`mongodb://127.0.0.1:${MONGO_PORT || 27017}/pi_db`, { useNewUrlParser: true });
+const db = sqlite.open('database.sqlite');
 
-const { Schema } = mongoose;
+class User {
+  constructor(data) {
+    const { username, password } = data;
 
-const UserSchema = new Schema({
-  username: String,
-  password: String,
-  created_at: { type: Date, default: Date.now },
-});
+    Object.assign(this, data);
 
-UserSchema.pre('save', function hashPassword(next) {
-  const user = this;
-  if (!user.isModified('password')) return next();
+    this.hashPassword();
 
-  return bcrypt.genSalt(SALT_WORK_FACTOR, (err, salt) => {
-    if (err) return next(err);
+    db.get(SQL`INSERT INTO Users (username, password, created_at) VALUES (${username}, ${password}, TIMESTAMP)`)
+      .then((res) => {
+        console.log('success res:', res);
+      })
+      .catch(err => {
+        console.error( `Error saving user: ${e}`);
+      });
+  }
 
-    return bcrypt.hash(user.password, salt, (e, hash) => {
-      if (e) return next(e);
-      user.password = hash;
-      return next();
+  static hashPassword() {
+    return bcrypt.genSalt(SALT_WORK_FACTOR, (err, salt) => {
+      if (err) console.error('Error generating salt:', err);
+
+      return bcrypt.hash(this.password, salt, (e, hash) => {
+        if (e) return console.error('Error hashing password:', e);
+        this.password = hash;
+        return console.log('successfully saved user');
+        });
     });
-  });
-});
+  }
 
-UserSchema.methods.comparePassword = function comparePassword(
-  candidatePassword,
-  cb
-) {
-  bcrypt.compare(candidatePassword, this.password, (err, isMatch) => {
-    if (err) return cb(err);
-    return cb(null, isMatch);
-  });
-};
+  static findOne(username) {
 
-const Users = mongoose.model('User', UserSchema);
+  }
 
-module.exports = { Users };
+  static comparePassword(
+      candidatePassword,
+      cb
+  ) {
+    bcrypt.compare(candidatePassword, this.password, (err, isMatch) => {
+      if (err) return cb(err);
+      return cb(null, isMatch);
+    });
+  };
+}
+
+module.exports = { Users: User };
